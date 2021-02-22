@@ -1,3 +1,8 @@
+#  TerminusDB + Python
+#  For Marie Tsaasan
+#  By Adam Hyman, Michael Dang, Nathan Chau
+#  Python at Orange Coast - CS231-42100
+
 from terminusdb_client.woqlclient.woqlClient import WOQLClient
 from terminusdb_client.woqlquery.woql_query import WOQLQuery as WQ
 
@@ -40,69 +45,71 @@ def add_song() -> None:
     User enter artist, title, length, and album name, insert into data base
     :return: None
     '''
-    # user input
-    artist = input("Enter artist's name:  ")
+
     title = input("Enter song's title:  ")
-    length = int(input("Enter song's length in seconds:  "))
     album = input("Enter song's album name:  ")
+    artist = input("Enter artist's name:  ")
+    length = int(input("Enter song's length in seconds:  "))
 
-    assert int(length) >= 0
-
-    # decide doc id
+    # Gets number of songs
     song_query = WQ()\
         .triple("v:X", "scm:title", "v:Y")\
         .execute(client)
     number = len(song_query["bindings"])
 
-    # insert database
+    # Inserts new song
     WQ().woql_and(
         WQ().insert(f"doc:{number + 1}", "scm:Song")
-            .property("scm:artist", artist)
             .property("scm:title", title)
-            .property("scm:length", length)
             .property("scm:album", album)
+            .property("scm:artist", artist)
+            .property("scm:length", length)
     ).execute(client, f"Insert song {number} from python")
 
 
 def edit_song() -> None:
     '''
-    User enter song
+    Allows user to edit a song's attributes.
     :return: None
     '''
     song_id = input("Enter song's id: ")
     song = get_song('terminusdb:///data/' + song_id)
 
-    print ('Current title is:  ' + song['title'])
-    new_title = input('Input new title, or Enter to skip:  ')
-    if new_title == '':
-        print('No change to title')
-    else:
-        print('Need to update title')
-
-    
-    query = WQ().triple('terminusdb:///data/' + song_id, "v:P", "v:Y").execute(client)
-    print(query)
-
-
-
-def print_option() -> None:
-    '''
-    print user options for console
-    :return: None
-    '''
     print('')
-    print('-----------------------')
-    print('|        MENU         |')
-    print('-----------------------')
-    print('1.  Add song to playlist')
-    print('2.  Edit song in playlist')
-    print('3.  Print playlist')
-    print('4.  Exit')
+    print('Song ' + song_id)
+    print('1.  Title:   ' + song['title'])
+    print('2.  Album:   ' + song['album'])
+    print('3.  Artist:  ' + song['artist'])
+    print('4.  Length:  ' + str(song['length']))
+    print('')
+
+    item_to_edit = '1'
+    while item_to_edit in ['1', '2', '3', '4']:
+
+        item_to_edit = input('Enter the number of the item that you wish to edit (Enter to exit):  ')
+        if item_to_edit == '':
+            break
+
+        item = ['0', 'title', 'album', 'artist', 'length'][int(item_to_edit)]
+
+        new_value = input('Input new ' + item + ':  ')
+        print ('')
+
+        #  Because length is the only attribute of a song that is an int.  The rest are str.
+        if item == 'length':
+           new_value = int(new_value)
+
+        WQ().woql_and(
+            WQ().triple("doc:" + song_id, "scm:" + item, "v:Title"),
+            WQ().delete_triple("doc:" + song_id, "scm:" + item, "v:Title"),
+            WQ().add_triple("doc:" + song_id, "scm:" + item, new_value),
+        ).execute(client, "Updated the " + str(new_value))
+
 
 
 def print_playlist() -> None:
     '''
-    Get the play list from database and prints it
+    Gets the playlist from database and prints it
     :return: None
     '''
 
@@ -145,6 +152,21 @@ def get_song(item: str) -> dict:
     return song
     
 
+def print_menu() -> None:
+    '''
+    prints main menu for the user
+    :return: None
+    '''
+    print('')
+    print('--------------------------')
+    print('|          MENU          |')
+    print('--------------------------')
+    print('1.  Add song to playlist')
+    print('2.  Edit song in playlist')
+    print('3.  Print playlist')
+    print('4.  Exit')
+
+
 def main() -> None:
     """
     user can either add a song or edit a song
@@ -154,8 +176,8 @@ def main() -> None:
 
     option = '1'
     while option in ['1', '2', '3']:
-        print_option()
-        option = input("Select between 1-4: ")
+        print_menu()
+        option = input("Select between 1-4:  ")
         if option == '1':
             add_song()
         elif option == '2':
@@ -163,7 +185,7 @@ def main() -> None:
         elif option == '3':
             print_playlist()
 
-    print("Bye!")
+    print("Thanks for using the playlist!")
 
 
 if __name__ == "__main__":
